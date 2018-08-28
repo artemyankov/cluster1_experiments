@@ -139,8 +139,8 @@ def main(_):
     config = tf.estimator.RunConfig(
         model_dir=FLAGS.log_dir,
         save_summary_steps=500,
-        save_checkpoints_steps=500,
-        keep_checkpoint_max=5,
+        save_checkpoints_steps=5000,
+        keep_checkpoint_max=1,
         log_step_count_steps=50
     )
 
