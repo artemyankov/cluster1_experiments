@@ -145,7 +145,7 @@ def main(_):
     )
 
     classifier = tf.estimator.Estimator(model_fn=make_model, config=config)
-    train_spec, val_spec = make_data(num_epochs=2, batch_size=32, shuffle=True)
+    train_spec, val_spec = make_data(num_epochs=None, batch_size=64, shuffle=True)
     tf.estimator.train_and_evaluate(classifier, train_spec, val_spec)
 
 if __name__ == '__main__':
