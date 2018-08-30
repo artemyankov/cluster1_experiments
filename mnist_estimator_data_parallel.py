@@ -142,7 +142,7 @@ def get_inputs(x, y, batch_size=64, shuffle=True):
 #    return None
 
 
-def main():
+def main(_):
     model = make_model()
 
     run_config = tf.estimator.RunConfig(
@@ -189,4 +189,4 @@ def main():
     tf.estimator.train_and_evaluate(classifier, train_spec, val_spec)
 
 if __name__ == '__main__':
-    main()
+    tf.app.run()
