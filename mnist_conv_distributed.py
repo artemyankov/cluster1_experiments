@@ -32,7 +32,7 @@ from clusterone import get_data_path, get_logs_path
 # For convenience we use a clusterone wrapper (get_data_path below) to be able
 # to switch from local to clusterone without cahnging the code.
 
-PATH_TO_LOCAL_LOGS = os.path.expanduser('~/Documents/mnist/logs')
+PATH_TO_LOCAL_LOGS = os.path.expanduser('/Users/artem/Documents/Scratch/cluster1_experiments/logs')
 ROOT_PATH_TO_LOCAL_DATA = os.path.expanduser('~/Documents/data/')
 
 # Configure  distributed task
