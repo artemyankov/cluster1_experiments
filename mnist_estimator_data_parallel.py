@@ -10,6 +10,9 @@ flags = tf.app.flags
 # Snippet for distributed learning
 #
 tf.logging.set_verbosity(tf.logging.INFO)
+
+
+print(os.environ)
 #try:
 #    config = os.environ['TF_CONFIG']
 #    config = json.loads(config)
