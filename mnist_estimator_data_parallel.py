@@ -1,4 +1,5 @@
 import os
+import json
 import tensorflow as tf
 import numpy as np
 from clusterone import get_data_path, get_logs_path
@@ -9,19 +10,66 @@ flags = tf.app.flags
 # Snippet for distributed learning
 #
 tf.logging.set_verbosity(tf.logging.INFO)
-try:
-    config = os.environ['TF_CONFIG']
-    config = json.loads(config)
-    task = config['task']['type']
-    task_index = config['task']['index']
+#try:
+#    config = os.environ['TF_CONFIG']
+#    config = json.loads(config)
+#    task = config['task']['type']
+#    task_index = config['task']['index']
+#
+#    local_ip = 'localhost:' + config['cluster'][task][task_index].split(':')[1]
+#    config['cluster'][task][task_index] = local_ip
+#    if task == 'chief' or task == 'master':
+#        config['cluster']['worker'][task_index] = local_ip
+#    os.environ['TF_CONFIG'] = json.dumps(config)
+#except:
+#    job_name = None
+#    task_index = 0
+#    ps_hosts = None
+#    worker_hosts = None
 
-    local_ip = 'localhost:' + config['cluster'][task][task_index].split(':')[1]
-    config['cluster'][task][task_index] = local_ip
-    if task == 'chief' or task == 'master':
-        config['cluster']['worker'][task_index] = local_ip
-    os.environ['TF_CONFIG'] = json.dumps(config)
-except:
+
+#task = config['task']['type']
+#task_index = config['task']['index']
+
+#local_ip = 'localhost:' + config['cluster'][task][task_index].split(':')[1]
+#config['cluster'][task][task_index] = local_ip
+#if task == 'chief' or task == 'master':
+#    config['cluster']['worker'][task_index] = local_ip
+
+try:
+    task_type = os.environ['JOB_NAME']
+    task_index = int(os.environ['TASK_INDEX'])
+    ps_hosts = os.environ['PS_HOSTS'].split(',')
+    worker_hosts = os.environ['WORKER_HOSTS'].split(',')
+    TF_CONFIG = {
+        'task': {'type': task_type, 'index': task_index},
+        'cluster': {
+            'chief': [worker_hosts[0]],
+            'worker': worker_hosts,
+            'ps': ps_hosts
+        },
+        'environment': 'cloud'
+    }
+
+    local_ip = 'localhost:' + TF_CONFIG['cluster'][task_type][task_index].split(':')[1]
+    TF_CONFIG['cluster'][task_type][task_index] = local_ip
+    if (task_type in ('chief', 'master')) or (task_type == 'worker' and task_index == 0):
+        TF_CONFIG['cluster']['worker'][task_index] = local_ip
+        TF_CONFIG['task']['type'] = 'chief'
+
+
+   # if (job_name == 'chief') or (job_name == 'worker' and task_index == 0):
+   #     job_name = 'chief'
+   #     TF_CONFIG['task']['type'] = 'chief'
+
+      #  TF_CONFIG['cluster']['worker'][0] = 'localhost:5000'
+ #   TF_CONFIG['cluster'][job_name][task_index] = 'localhost:5000'
+  #  print(TF_CONFIG)
+    os.environ['TF_CONFIG'] = json.dumps(TF_CONFIG)
+except KeyError as ex:
+    print(ex)
     pass
+
 
 flags.DEFINE_string("log_dir",
                     get_logs_path(
@@ -181,8 +229,8 @@ def main(_):
     val_spec = tf.estimator.EvalSpec(
         input_fn=test_input_fn,
         steps=None,
-        start_delay_secs=10,
-        throttle_secs=30,
+        start_delay_secs=1,
+        throttle_secs=3,
         hooks=[test_iter_hook]
     )
 
