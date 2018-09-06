@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import tensorflow as tf
 import numpy as np
 from clusterone import get_data_path, get_logs_path
@@ -163,18 +164,28 @@ def get_inputs(x, y, batch_size=64, shuffle=True):
 #
 #    return None
 
+class TimeHistory(tf.train.SessionRunHook):
+    def begin(self):
+        self.times = []
+
+    def before_run(self, run_context):
+        self.iter_time_start = time.time()
+
+    def after_run(self, run_context, run_values):
+        self.times.append(time.time() - self.iter_time_start)
 
 def main(_):
     model = make_model()
 
-    strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=FLAGS.n_gpus)
+    time_hist = TimeHistory()
+
+  #  strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=FLAGS.n_gpus)
     run_config = tf.estimator.RunConfig(
         model_dir=FLAGS.log_dir,
         save_summary_steps=500,
         save_checkpoints_steps=500,
         keep_checkpoint_max=3,
-        log_step_count_steps=50,
-        train_distribute=strategy
+        log_step_count_steps=50
     )
 
     classifier = tf.keras.estimator.model_to_estimator(
@@ -199,8 +210,8 @@ def main(_):
 
     train_spec = tf.estimator.TrainSpec(
         input_fn=train_input_fn,
-        max_steps=1e5,
-        hooks=[train_iter_hook]
+        max_steps=1e4,
+        hooks=[train_iter_hook, time_hist]
     )
     val_spec = tf.estimator.EvalSpec(
         input_fn=test_input_fn,
@@ -211,6 +222,10 @@ def main(_):
     )
 
     tf.estimator.train_and_evaluate(classifier, train_spec, val_spec)
+
+    # job metrics
+    total_time = sum(time_hist.times)
+    print('Total Training Time: {0} on {1} GPUs'.format(total_time, FLAGS.n_gpus))
 
 if __name__ == '__main__':
     tf.app.run()
