@@ -210,7 +210,7 @@ def main(_):
 
     train_spec = tf.estimator.TrainSpec(
         input_fn=train_input_fn,
-        max_steps=1e4,
+        max_steps=1e5,
         hooks=[train_iter_hook, time_hist]
     )
     val_spec = tf.estimator.EvalSpec(
