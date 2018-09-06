@@ -12,7 +12,6 @@ flags = tf.app.flags
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-print(os.environ)
 #try:
 #    config = os.environ['TF_CONFIG']
 #    config = json.loads(config)
@@ -71,7 +70,10 @@ try:
     os.environ['TF_CONFIG'] = json.dumps(TF_CONFIG)
 except KeyError as ex:
     print(ex)
-    pass
+    job_name = None
+    task_index = 0
+    ps_hosts = None
+    worker_hosts = None
 
 
 flags.DEFINE_string("log_dir",
@@ -122,7 +124,7 @@ def get_inputs(x, y, batch_size=64, shuffle=True):
         data_x = tf.data.Dataset.from_tensor_slices(x_placeholder)
         data_y = tf.data.Dataset.from_tensor_slices(y_placeholder)
         data = tf.data.Dataset.zip((data_x, data_y))
-        data = data.batch(batch_size)
+        data = data.batch(batch_size).repeat(count=None)
 
         if shuffle:
             data = data.shuffle(buffer_size=batch_size * 10)
@@ -232,8 +234,8 @@ def main(_):
     val_spec = tf.estimator.EvalSpec(
         input_fn=test_input_fn,
         steps=None,
-        start_delay_secs=1,
-        throttle_secs=3,
+        start_delay_secs=10,
+        throttle_secs=30,
         hooks=[test_iter_hook]
     )
 
