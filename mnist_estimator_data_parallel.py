@@ -11,33 +11,6 @@ flags = tf.app.flags
 #
 tf.logging.set_verbosity(tf.logging.INFO)
 
-
-#try:
-#    config = os.environ['TF_CONFIG']
-#    config = json.loads(config)
-#    task = config['task']['type']
-#    task_index = config['task']['index']
-#
-#    local_ip = 'localhost:' + config['cluster'][task][task_index].split(':')[1]
-#    config['cluster'][task][task_index] = local_ip
-#    if task == 'chief' or task == 'master':
-#        config['cluster']['worker'][task_index] = local_ip
-#    os.environ['TF_CONFIG'] = json.dumps(config)
-#except:
-#    job_name = None
-#    task_index = 0
-#    ps_hosts = None
-#    worker_hosts = None
-
-
-#task = config['task']['type']
-#task_index = config['task']['index']
-
-#local_ip = 'localhost:' + config['cluster'][task][task_index].split(':')[1]
-#config['cluster'][task][task_index] = local_ip
-#if task == 'chief' or task == 'master':
-#    config['cluster']['worker'][task_index] = local_ip
-
 try:
     task_type = os.environ['JOB_NAME']
     task_index = int(os.environ['TASK_INDEX'])
@@ -59,14 +32,6 @@ try:
         TF_CONFIG['cluster']['worker'][task_index] = local_ip
         TF_CONFIG['task']['type'] = 'chief'
 
-
-   # if (job_name == 'chief') or (job_name == 'worker' and task_index == 0):
-   #     job_name = 'chief'
-   #     TF_CONFIG['task']['type'] = 'chief'
-
-      #  TF_CONFIG['cluster']['worker'][0] = 'localhost:5000'
- #   TF_CONFIG['cluster'][job_name][task_index] = 'localhost:5000'
-  #  print(TF_CONFIG)
     os.environ['TF_CONFIG'] = json.dumps(TF_CONFIG)
 except KeyError as ex:
     print(ex)
@@ -85,6 +50,8 @@ flags.DEFINE_string("log_dir",
                     "from local to clusterone without changing your code."
                     "If you set the data directory manually makue sure to use"
                     "/data/ as root path when running on ClusterOne cloud.")
+tf.flags.DEFINE_integer('n_gpus', 1, 'number of gpus to utilize')
+
 FLAGS = flags.FLAGS
 
 def make_model():
@@ -128,6 +95,8 @@ def get_inputs(x, y, batch_size=64, shuffle=True):
 
         if shuffle:
             data = data.shuffle(buffer_size=batch_size * 10)
+
+        data = data.prefetch(8)
 
         iterator = data.make_initializable_iterator()
         next_example, next_label = iterator.get_next()
@@ -198,12 +167,14 @@ def get_inputs(x, y, batch_size=64, shuffle=True):
 def main(_):
     model = make_model()
 
+    strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=FLAGS.n_gpus)
     run_config = tf.estimator.RunConfig(
         model_dir=FLAGS.log_dir,
         save_summary_steps=500,
         save_checkpoints_steps=500,
         keep_checkpoint_max=3,
-        log_step_count_steps=50
+        log_step_count_steps=50,
+        train_distribute=strategy
     )
 
     classifier = tf.keras.estimator.model_to_estimator(
@@ -228,7 +199,7 @@ def main(_):
 
     train_spec = tf.estimator.TrainSpec(
         input_fn=train_input_fn,
-        max_steps=1e4,
+        max_steps=1e5,
         hooks=[train_iter_hook]
     )
     val_spec = tf.estimator.EvalSpec(
